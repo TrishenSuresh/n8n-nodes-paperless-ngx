@@ -151,6 +151,60 @@ export const description: INodeProperties[] = [
 				type: 'resourceLocator',
 			},
 			{
+				displayName: 'Tags',
+				name: 'tags',
+				default: {},
+				description: 'The tag IDs to apply to the document',
+				options: [
+					{
+						displayName: 'Tag',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Tag',
+								name: 'tag',
+								default: { mode: 'list', value: '' },
+								description: 'The tag ID',
+								modes: [
+									{
+										displayName: 'From List',
+										name: 'list',
+										placeholder: `Select a Tag...`,
+										type: 'list',
+										typeOptions: {
+											searchListMethod: 'tagSearch',
+											searchFilterRequired: false,
+											searchable: true,
+										},
+									},
+									{
+										displayName: 'By ID',
+										name: 'id',
+										placeholder: `Enter Tag ID...`,
+										type: 'string',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '^[1-9][0-9]*$',
+													errorMessage: 'The ID must be a positive integer',
+												},
+											},
+										],
+									},
+								],
+								type: 'resourceLocator',
+							},
+						],
+					},
+				],
+				placeholder: 'Add Tag',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+			},
+			{
 				displayName: 'Title',
 				name: 'title',
 				default: '',
@@ -161,7 +215,7 @@ export const description: INodeProperties[] = [
 	},
 	{
 		displayName:
-			'Custom fields and tags are not yet supported on document creation... Use the update operation to set these values',
+			'Custom fields are not yet supported on document creation... Use the update operation to set these values',
 		name: 'notice_not_supported',
 		default: '',
 		displayOptions: {
@@ -204,6 +258,14 @@ export async function execute(
 		.forEach(([key, value]) => {
 			formData.append(key, value);
 		});
+
+	// Tags are sent as a repeated `tags` form field; Paperless applies them during consumption.
+	const tags = (additionalFields.tags?.values ?? [])
+		.map((entry: any) => Number(entry.tag?.value))
+		.filter((id: number) => Number.isInteger(id) && id > 0);
+	for (const tagId of tags) {
+		formData.append('tags', String(tagId));
+	}
 
 	const response = (await apiRequest.call(
 		this,
